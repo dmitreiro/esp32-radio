@@ -1,0 +1,12 @@
+# Arduino specific ignores
+*.elf
+*.bin
+*.hex
+*.eep
+*.o
+*.d
+build/
+libraries/
+.DS_Store
+Thumbs.db
+
