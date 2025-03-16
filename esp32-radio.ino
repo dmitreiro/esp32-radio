@@ -6,25 +6,28 @@
 #include "src/index_html.h"
 #include "src/config.h"
 
-// Audio pins
+// audio pins
 #define I2S_DOUT      25  // connect to DAC pin DIN
 #define I2S_BCLK      26  // connect to DAC pin BCK
 #define I2S_LRC       27  // connect to DAC pin LCK
 
-//Volume analog input (3.3v limit voltage)
-#define POT_PIN       34  //input pin used to control the audio volume
+// volume control
 #define VOLUME_CONTROL_STEPS  100
-#define VOLUME  12
+#define VOLUME  14
 
-// Channel control buttons
-#define CHAN_UP_PIN         4   //increases channel number
-#define CHAN_DOWN_PIN       15  //decreases channel number
+// define pins for buttons
+#define CHAN_UP_PIN         5   //increases channel number
+#define CHAN_DOWN_PIN       17  //decreases channel number
+#define VOL_UP_PIN          16  //increases volume
+#define VOL_DOWN_PIN        4   //decreases volume
 #define DEBOUNCE_TIME 50
 #define NUMBER_OF_CHANNELS  4  //this should match the number of URLs found in the connect() function below
 
-// Create up and down buttons
-ezButton upButton(CHAN_UP_PIN);
-ezButton downButton(CHAN_DOWN_PIN);
+// create buttons
+ezButton upChanBtn(CHAN_UP_PIN);
+ezButton downChanBtn(CHAN_DOWN_PIN);
+ezButton upVolBtn(VOL_UP_PIN);
+ezButton downVolBtn(VOL_DOWN_PIN);
 
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
@@ -53,7 +56,7 @@ int potVol;
 int setpointVol;
 
 // Internal volume variable
-int volume = 12;
+int volume = 14;
 
 // Radio stream links
 String radio1 = "http://streamlink1.com";
@@ -61,15 +64,6 @@ String radio2 = "http://streamlink2.com";
 String radio3 = "http://streamlink3.com";
 String radio4 = "http://streamlink4.com";
 String currentStream = "";
-
-void setupButtons(){
-	Serial.println("Setting audio channel buttons.");
-  pinMode(CHAN_UP_PIN, INPUT_PULLUP);
-  pinMode(CHAN_DOWN_PIN, INPUT_PULLUP);
-
-  upButton.setDebounceTime(DEBOUNCE_TIME);
-  downButton.setDebounceTime(DEBOUNCE_TIME);
-}
 
 void setupAudio(){
   Serial.println("Setting I2S output pins and initial volume level.");
@@ -79,28 +73,10 @@ void setupAudio(){
 
   //set the initial volume level
   audio.setVolumeSteps(VOLUME_CONTROL_STEPS);
-  initPotVol = map(analogRead(POT_PIN), 0, 4095, 0, VOLUME_CONTROL_STEPS);  // map potentiometer value to a volume percentage;
   audio.setVolume(VOLUME);
   Serial.print("Inital volume set at ");
   Serial.print(VOLUME);
   Serial.println("%");
-}
-
-void setStartAudio(){
-  potVol = map(analogRead(POT_PIN), 0, 4095, 0, VOLUME_CONTROL_STEPS);
-  setpointVol = sliderVol;
-  /*
-  if (abs(potVol - initPotVol) >= 7 && potVol <= VOLUME)
-  {
-    knobCommand = true;
-    sliderCommand = false;
-  }
-  */
-	if (abs(sliderVol - VOLUME) >= 5 && sliderVol <= VOLUME)
-	{
-		knobCommand = false;
-    sliderCommand = true;
-	}
 }
 
 void volCheck(){
@@ -125,23 +101,20 @@ void connect(Audio *audio, int channel) {
     //  *** radio streams ***
     case 1:
     //(*audio).connecttohost("https://stream-icy.bauermedia.pt/m80.aac");
-    //(*audio).connecttohost("http://stream.regenbogen2.de/bawue/aac-64/"); // 64 kbp/s aac+ rock fm
-    //(*audio).connecttohost("https://live.amperwave.net/direct/townsquare-keyjfmmp3-ibc3.mp3&source=ts-tunein"); // rock 108
+    //(*audio).connecttohost("https://github.com/pgiacalo/audio_test/raw/main/LeftRightCenterTest.mp3"); // audio left and right test
     (*audio).connecttohost("https://corus.leanstream.co/CJKRFM-MP3"); // rock 108
-    
-    //(*audio).connecttohost("http://1.fm/tunestream/hits2000/listen.pls"); // 1.fm top hits 2000
     break;
 		
     case 2:
-    (*audio).connecttohost("http://stream.regenbogen2.de/bawue/aac-64/"); // 64 kbp/s aac+ rock fm
+    (*audio).connecttohost("http://1.fm/tunestream/hits2000/listen.pls"); // 1.fm top hits 2000
     break;
     
     case 3:
-    (*audio).connecttohost("http://broadcast.infomaniak.ch/latinakizomba.mp3"); // latina kizomba
+    (*audio).connecttohost("https://webprod.sipse.com.mx:8080/kissfm/"); // kiss fm
     break;
   
     case 4:
-    (*audio).connecttohost("https://webprod.sipse.com.mx:8080/kissfm/"); // kiss fm
+    (*audio).connecttohost("http://stream.regenbogen2.de/bawue/aac-64/"); // 64 kbp/s aac+ rock fm
     break;
   }
 }
@@ -158,8 +131,17 @@ void setup() {
   setupAudio();
   Serial.println("------- Audio Setup Complete -------");
 
-  setupButtons();
-  Serial.println("------- Buttons Setup Complete -------");
+  // define pinmode for buttons
+  pinMode(CHAN_UP_PIN, INPUT_PULLUP);
+  pinMode(CHAN_DOWN_PIN, INPUT_PULLUP);
+  pinMode(VOL_UP_PIN, INPUT_PULLUP);
+  pinMode(VOL_DOWN_PIN, INPUT_PULLUP);
+
+  // set debounce time for buttons
+  upChanBtn.setDebounceTime(DEBOUNCE_TIME);
+  downChanBtn.setDebounceTime(DEBOUNCE_TIME);
+  upVolBtn.setDebounceTime(DEBOUNCE_TIME);
+  downVolBtn.setDebounceTime(DEBOUNCE_TIME);
 
   Serial.println("Playing audio...");
   Serial.print("Playing Channel #");
@@ -227,41 +209,17 @@ void setup() {
 }
 
 void loop() {
-  if (knobCommand == false && sliderCommand == false)
-  {
-    setStartAudio();
-  }
-  /*
-  if (knobCommand == true && sliderCommand == false)
-  {
-    potVol = map(analogRead(POT_PIN), 0, 4095, 0, VOLUME_CONTROL_STEPS);
-    //Serial.print("Sou knob, ");
-    //Serial.println(potVol);
-    audio.setVolume(potVol);
-    volume = potVol;
-    volCheck();
-  } */
-  if (knobCommand == false && sliderCommand == true)
-  {
-    //Serial.print("Sou slider, ");
-    //Serial.println(sliderVol);
-    audio.setVolume(sliderVol);
-    volume = sliderVol;
-    volCheck();
-  }
-  //Serial.print(knobCommand);
-  //Serial.print(",");
-  //Serial.println(sliderCommand);
-  
-  //audio.setVolume(volume);
+  audio.setVolume(volume);
 
   bool changingChannels = false;
 
-  upButton.loop();
-	downButton.loop();
+  upChanBtn.loop();
+	downChanBtn.loop();
+  upVolBtn.loop();
+	downVolBtn.loop();
 
-  if (upButton.isReleased()) {
-		Serial.println("Up button pressed");
+  if (upChanBtn.isReleased()) {
+		Serial.println("Up channel button pressed");
     changingChannels = true;
     currentChannelNumber = currentChannelNumber + 1;
     if (currentChannelNumber > NUMBER_OF_CHANNELS){
@@ -269,12 +227,23 @@ void loop() {
     }
   }
 
-  if (downButton.isReleased()) { 
+  if (downChanBtn.isReleased()) { 
+    Serial.println("Down channel button pressed");
     changingChannels = true;
     currentChannelNumber = currentChannelNumber - 1;
     if (currentChannelNumber < 1){
       currentChannelNumber = NUMBER_OF_CHANNELS;
     }
+	}
+
+  if (upVolBtn.isReleased()) {
+		Serial.println("Up volume button pressed");
+    volume = volume + 3;
+  }
+
+  if (downVolBtn.isReleased()) { 
+    Serial.println("Down volume button pressed");
+    volume = volume - 3;
 	}
 
   if (changingChannels){
