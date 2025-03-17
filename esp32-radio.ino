@@ -79,21 +79,21 @@ void setupAudio(){
   Serial.println("%");
 }
 
-void volCheck(){
-  int currPotVol = map(analogRead(POT_PIN), 0, 4095, 0, VOLUME_CONTROL_STEPS);
-  // if knob commands
-  if (knobCommand == true && sliderCommand == false && abs(sliderVol - setpointVol) >= 1 && sliderVol <= potVol) {
-		knobCommand = false;
-    sliderCommand = true;
-    potVol = currPotVol;
-	}
-  // if slider commands
-  else if (knobCommand == false && sliderCommand == true && abs(currPotVol - potVol) >= 10 && currPotVol <= sliderVol) {
-    knobCommand = true;
-    sliderCommand = false;
-    setpointVol = sliderVol;
-  }
-}
+// void volCheck(){
+//   int currPotVol = map(analogRead(POT_PIN), 0, 4095, 0, VOLUME_CONTROL_STEPS);
+//   // if knob commands
+//   if (knobCommand == true && sliderCommand == false && abs(sliderVol - setpointVol) >= 1 && sliderVol <= potVol) {
+// 		knobCommand = false;
+//     sliderCommand = true;
+//     potVol = currPotVol;
+// 	}
+//   // if slider commands
+//   else if (knobCommand == false && sliderCommand == true && abs(currPotVol - potVol) >= 10 && currPotVol <= sliderVol) {
+//     knobCommand = true;
+//     sliderCommand = false;
+//     setpointVol = sliderVol;
+//   }
+// }
 
 void connect(Audio *audio, int channel) {
   switch (channel){
