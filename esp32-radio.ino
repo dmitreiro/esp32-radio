@@ -16,12 +16,15 @@
 #define VOLUME  14
 
 // define pins for buttons
-#define CHAN_UP_PIN         5   //increases channel number
-#define CHAN_DOWN_PIN       17  //decreases channel number
-#define VOL_UP_PIN          16  //increases volume
-#define VOL_DOWN_PIN        4   //decreases volume
-#define DEBOUNCE_TIME 50
-#define NUMBER_OF_CHANNELS  4  //this should match the number of URLs found in the connect() function below
+#define CHAN_UP_PIN         5   // increases channel number
+#define CHAN_DOWN_PIN       17  // decreases channel number
+#define VOL_UP_PIN          16  // increases volume
+#define VOL_DOWN_PIN        4   // decreases volume
+#define DEBOUNCE_TIME 50        // button debounce time
+
+// stream channels
+#define NUMBER_OF_CHANNELS  4   // this should match the number of URLs found in the connect() function below
+#define START_CHAN 1         // starting channel
 
 // create buttons
 ezButton upChanBtn(CHAN_UP_PIN);
@@ -46,75 +49,47 @@ unsigned long previousTime = 0;
 // Define timeout time in milliseconds (example: 2000ms = 2s)
 const long timeoutTime = 2000;
 
-int currentChannelNumber = 1; // starts channel list at 1
+int currentChannelNumber = START_CHAN; // starts channel list at 1
 
-bool knobCommand = false; // when true, passes volume control to POT_PIN
-bool sliderCommand = false; // when true, passes volume control to slider
 int initPotVol;
-int sliderVol = VOLUME;
+int sliderVol = volume;
 int potVol;
 int setpointVol;
 
-// Internal volume variable
-int volume = 14;
-
 // Radio stream links
-String radio1 = "http://streamlink1.com";
-String radio2 = "http://streamlink2.com";
-String radio3 = "http://streamlink3.com";
-String radio4 = "http://streamlink4.com";
 String currentStream = "";
 
 void setupAudio(){
-  Serial.println("Setting I2S output pins and initial volume level.");
+  Serial.println("Setting I2S output pins and initial volume level...");
 
-  //configure the I2S output pins
+  // configure the I2S output pins
   audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
 
   //set the initial volume level
   audio.setVolumeSteps(VOLUME_CONTROL_STEPS);
-  audio.setVolume(VOLUME);
+  audio.setVolume(volume);
   Serial.print("Inital volume set at ");
-  Serial.print(VOLUME);
+  Serial.print(volume);
   Serial.println("%");
 }
 
-// void volCheck(){
-//   int currPotVol = map(analogRead(POT_PIN), 0, 4095, 0, VOLUME_CONTROL_STEPS);
-//   // if knob commands
-//   if (knobCommand == true && sliderCommand == false && abs(sliderVol - setpointVol) >= 1 && sliderVol <= potVol) {
-// 		knobCommand = false;
-//     sliderCommand = true;
-//     potVol = currPotVol;
-// 	}
-//   // if slider commands
-//   else if (knobCommand == false && sliderCommand == true && abs(currPotVol - potVol) >= 10 && currPotVol <= sliderVol) {
-//     knobCommand = true;
-//     sliderCommand = false;
-//     setpointVol = sliderVol;
-//   }
-// }
-
+// radio streams
 void connect(Audio *audio, int channel) {
   switch (channel){
-  
-    //  *** radio streams ***
     case 1:
-    //(*audio).connecttohost("https://stream-icy.bauermedia.pt/m80.aac");
-    //(*audio).connecttohost("https://github.com/pgiacalo/audio_test/raw/main/LeftRightCenterTest.mp3"); // audio left and right test
-    (*audio).connecttohost("https://corus.leanstream.co/CJKRFM-MP3"); // rock 108
+    (*audio).connecttohost(radio1);
     break;
 		
     case 2:
-    (*audio).connecttohost("http://1.fm/tunestream/hits2000/listen.pls"); // 1.fm top hits 2000
+    (*audio).connecttohost(radio2);
     break;
     
     case 3:
-    (*audio).connecttohost("https://webprod.sipse.com.mx:8080/kissfm/"); // kiss fm
+    (*audio).connecttohost(radio3);
     break;
   
     case 4:
-    (*audio).connecttohost("http://stream.regenbogen2.de/bawue/aac-64/"); // 64 kbp/s aac+ rock fm
+    (*audio).connecttohost(radio4);
     break;
   }
 }
@@ -143,11 +118,9 @@ void setup() {
   upVolBtn.setDebounceTime(DEBOUNCE_TIME);
   downVolBtn.setDebounceTime(DEBOUNCE_TIME);
 
-  Serial.println("Playing audio...");
   Serial.print("Playing Channel #");
   Serial.println(currentChannelNumber);
-  
-  connect(&audio, currentChannelNumber);
+  connect(&audio, START_CHAN);
 
   // Serve the HTML page
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
